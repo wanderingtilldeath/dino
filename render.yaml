@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: dino-run
+    runtime: docker
+    region: ohio # matches the Neon project in AWS us-east-2; keep the two in the same region to keep queries fast
+    plan: free # free sleeps after 15 min idle and takes ~1 min to wake; use "starter" for always-on
+    healthCheckPath: /healthz # does not touch the database, so a sleeping Neon cannot fail the check
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Render asks for the Neon connection string when the blueprint is created; it never goes in git

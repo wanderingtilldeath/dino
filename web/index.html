@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dino Run</title>
+<meta name="description" content="A tiny endless runner with a daily challenge and ghost races.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231a7a6e'/%3E%3Crect x='7' y='11' width='13' height='13' rx='4' fill='white'/%3E%3Crect x='15' y='6' width='11' height='9' rx='4' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><rect x="7" y="11" width="13" height="13" rx="4" fill="#fff"/><rect x="15" y="6" width="11" height="9" rx="4" fill="#fff"/></svg>
+      <h1>Dino Run</h1>
+    </div>
+    <div class="top-right">
+      <span>Best <b id="bestTop">0</b></span>
+      <button id="mute" class="icon" type="button" aria-label="Sound"></button>
+    </div>
+  </header>
+
+  <section class="card stage-card">
+    <div class="stage">
+      <canvas id="c" width="600" height="150" role="img" aria-label="Dino runner game"></canvas>
+      <div id="start" class="pill"><small id="startMeta">Endless</small><strong>Press Space or tap to start</strong></div>
+    </div>
+    <div id="result" class="result" aria-live="polite" hidden>
+      <div class="r-score"><span id="rScore">0</span><span id="rTag" class="tag" hidden>New best</span></div>
+      <div class="r-meta"><span>Best <b id="rBest">0</b></span><span>Rank <b id="rRank">-</b></span></div>
+      <div class="r-actions">
+        <button id="share" class="btn" type="button">Copy result</button>
+        <button id="again" class="btn primary" type="button">Play again</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card controls">
+    <div class="seg" role="radiogroup" aria-label="Mode">
+      <button id="endless" type="button" role="radio" aria-checked="true">Endless</button>
+      <button id="daily" type="button" role="radio" aria-checked="false" disabled>Daily</button>
+    </div>
+    <div class="field"><span class="label">Dino</span><div id="skins" class="chips" role="radiogroup" aria-label="Skin"></div></div>
+    <div class="field"><span class="label">Theme</span><div id="themes" class="chips" role="radiogroup" aria-label="Theme"></div></div>
+    <label class="field"><span class="label">Name</span><input id="name" maxlength="20" value="anon" autocomplete="nickname"></label>
+    <p class="hint">
+      <span class="kb">Space or Up to jump, Down to duck, M to mute.</span><span class="touch">Tap to jump, swipe down to duck.</span>
+      Pickups: S shield, T slow-mo, D double jump, M magnet. A boss arrives every 1000 points. Daily is the same course for everyone, with a ghost of today's best run.
+    </p>
+  </section>
+
+  <div class="cols">
+    <section class="card"><h2 id="boardTitle">Top 10</h2><ol id="board" class="board"></ol></section>
+    <section class="card">
+      <h2>Your progress</h2>
+      <dl id="stats" class="stats"></dl>
+      <ul id="badges" class="badges"></ul>
+      <p class="hint">Saved in this browser only.</p>
+    </section>
+  </div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
