@@ -29,4 +29,6 @@ git push -u origin main
 ## Notes
 - Free Render sleeps after 15 min idle (about 1 min to wake). Change `plan: free` to `plan: starter` for always-on.
 - Neon free also scales to zero; the first request after a quiet period is slower. The app waits up to 30s for the database on boot.
+- Schema changes apply on boot (`ADD COLUMN IF NOT EXISTS`). The `difficulty` column defaults existing scores to `normal`, so no data is lost on redeploy.
+- Ghosts are stored per sim version (`daily:<date>:v<N>`): after a gameplay change, today's old ghost simply stops showing and a new one forms.
 - Writes are limited to ~10/s overall. Scores are client-reported, so the leaderboard can be faked.

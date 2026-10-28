@@ -19,17 +19,20 @@ export function loadStats() {
   try { return { ...blank(), ...JSON.parse(load(KEY, "{}")) }; } catch { return blank(); }
 }
 
-// run = {score, coins, bosses, shields, daily, ms}; returns the new stats and the badges this run unlocked
+// run = {score, coins, bosses, shields, daily, ranked, ms}; returns the new stats and the badges this run unlocked.
+// Practice runs (Chill, Zen) only count toward runs and play time, so they cannot farm Best, unlocks or badges.
 export function recordRun(run) {
   const s = loadStats();
   const had = new Set(BADGES.filter(b => b.test(s)).map(b => b.id));
   s.runs++;
-  s.best = Math.max(s.best, run.score);
-  s.coins += run.coins;
-  s.bosses += run.bosses;
-  s.shields += run.shields;
-  s.dailies += run.daily ? 1 : 0;
   s.ms += run.ms;
+  if (run.ranked) {
+    s.best = Math.max(s.best, run.score);
+    s.coins += run.coins;
+    s.bosses += run.bosses;
+    s.shields += run.shields;
+    s.dailies += run.daily ? 1 : 0;
+  }
   save(KEY, JSON.stringify(s));
   return { stats: s, unlocked: BADGES.filter(b => b.test(s) && !had.has(b.id)) };
 }

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,10 +30,24 @@ const maxScore = 100000
 const maxInputs = 5000
 
 type score struct {
-	Name  string `json:"name"`
-	Score int    `json:"score"`
-	Daily bool   `json:"daily,omitempty"` // submit only
-	Seed  int    `json:"seed,omitempty"`  // submit only, must match today's seed for daily runs
+	Name       string `json:"name"`
+	Score      int    `json:"score"`
+	Daily      bool   `json:"daily,omitempty"`      // submit only
+	Seed       int    `json:"seed,omitempty"`       // submit only, must match today's seed for daily runs
+	Difficulty string `json:"difficulty,omitempty"` // submit only: "normal" (default) or "hardcore"; Chill and Zen are practice and never submitted
+}
+
+// only these levels have a leaderboard; the daily course is always normal
+func rankedLevel(d string) bool { return d == "normal" || d == "hardcore" }
+
+// the sim version (SIM_VERSION in web/sim.js) keys stored ghosts: a ghost only replays on the sim that recorded it
+func parseVer(s string) (int, bool) {
+	v, err := strconv.Atoi(s)
+	return v, err == nil && v >= 1 && v <= 99
+}
+
+func ghostKind(day time.Time, ver int) string {
+	return fmt.Sprintf("daily:%s:v%d", day.Format("2006-01-02"), ver)
 }
 
 type ghost struct {
@@ -105,6 +120,8 @@ func main() {
 		`CREATE TABLE IF NOT EXISTS scores (
 			id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, score INTEGER NOT NULL)`,
 		`ALTER TABLE scores ADD COLUMN IF NOT EXISTS daily DATE`,
+		`ALTER TABLE scores ADD COLUMN IF NOT EXISTS difficulty TEXT NOT NULL DEFAULT 'normal'`, // existing rows become normal
+		`CREATE INDEX IF NOT EXISTS scores_board ON scores (difficulty, daily, score DESC, id)`,
 		`CREATE TABLE IF NOT EXISTS ghosts (
 			kind TEXT PRIMARY KEY, score INTEGER NOT NULL, seed INTEGER NOT NULL, inputs JSONB NOT NULL)`,
 	} {
@@ -150,7 +167,15 @@ func main() {
 	})
 
 	mux.HandleFunc("GET /api/scores", func(w http.ResponseWriter, r *http.Request) {
-		q, args := `SELECT name, score FROM scores WHERE daily IS NULL ORDER BY score DESC, id LIMIT 10`, []any{}
+		diff := r.URL.Query().Get("difficulty")
+		if diff == "" {
+			diff = "normal"
+		}
+		if !rankedLevel(diff) {
+			http.Error(w, "invalid difficulty", http.StatusBadRequest)
+			return
+		}
+		q, args := `SELECT name, score FROM scores WHERE daily IS NULL AND difficulty = $1 ORDER BY score DESC, id LIMIT 10`, []any{diff}
 		if r.URL.Query().Get("daily") == "1" {
 			day, _ := today()
 			q, args = `SELECT name, score FROM scores WHERE daily = $1 ORDER BY score DESC, id LIMIT 10`, []any{day}
@@ -184,6 +209,13 @@ func main() {
 			http.Error(w, "invalid score", http.StatusBadRequest)
 			return
 		}
+		if s.Difficulty == "" {
+			s.Difficulty = "normal"
+		}
+		if !rankedLevel(s.Difficulty) || (s.Daily && s.Difficulty != "normal") {
+			http.Error(w, "invalid difficulty", http.StatusBadRequest)
+			return
+		}
 		// the client never picks the day: daily runs must carry today's seed and are filed under today's date
 		var daily any
 		if s.Daily {
@@ -195,15 +227,15 @@ func main() {
 			daily = day
 		}
 		var id int64
-		if err := db.QueryRow(`INSERT INTO scores (name, score, daily) VALUES ($1, $2, $3) RETURNING id`, s.Name, s.Score, daily).Scan(&id); err != nil {
+		if err := db.QueryRow(`INSERT INTO scores (name, score, daily, difficulty) VALUES ($1, $2, $3, $4) RETURNING id`, s.Name, s.Score, daily, s.Difficulty).Scan(&id); err != nil {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
 		// rank follows the leaderboard order (score DESC, id): count the rows that sort before this one
 		var rank int
 		if err := db.QueryRow(`SELECT COUNT(*) + 1 FROM scores
-			WHERE daily IS NOT DISTINCT FROM $1::date AND (score > $2 OR (score = $2 AND id < $3))`,
-			daily, s.Score, id).Scan(&rank); err != nil {
+			WHERE daily IS NOT DISTINCT FROM $1::date AND difficulty = $4 AND (score > $2 OR (score = $2 AND id < $3))`,
+			daily, s.Score, id, s.Difficulty).Scan(&rank); err != nil {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
@@ -214,9 +246,14 @@ func main() {
 
 	// best run of today's daily course, replayed client-side as a ghost
 	mux.HandleFunc("GET /api/ghost", func(w http.ResponseWriter, r *http.Request) {
+		ver, ok := parseVer(r.URL.Query().Get("ver"))
+		if !ok {
+			http.Error(w, "invalid ver", http.StatusBadRequest)
+			return
+		}
 		day, _ := today()
 		var g ghost
-		err := db.QueryRow(`SELECT score, seed, inputs FROM ghosts WHERE kind = $1`, "daily:"+day.Format("2006-01-02")).
+		err := db.QueryRow(`SELECT score, seed, inputs FROM ghosts WHERE kind = $1`, ghostKind(day, ver)).
 			Scan(&g.Score, &g.Seed, &g.Inputs)
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNoContent) // not a 404: that logs a console error on every load until someone plays
@@ -233,6 +270,7 @@ func main() {
 		var g struct {
 			Score  int      `json:"score"`
 			Seed   int      `json:"seed"`
+			Ver    int      `json:"ver"`
 			Inputs [][2]any `json:"inputs"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&g); err != nil {
@@ -240,7 +278,7 @@ func main() {
 			return
 		}
 		day, seed := today()
-		if g.Seed != seed || g.Score < 0 || g.Score > maxScore || len(g.Inputs) > maxInputs {
+		if g.Seed != seed || g.Ver < 1 || g.Ver > 99 || g.Score < 0 || g.Score > maxScore || len(g.Inputs) > maxInputs {
 			http.Error(w, "invalid ghost", http.StatusBadRequest)
 			return
 		}
@@ -258,7 +296,7 @@ func main() {
 		if _, err := db.Exec(`INSERT INTO ghosts (kind, score, seed, inputs) VALUES ($1, $2, $3, $4)
 			ON CONFLICT (kind) DO UPDATE SET score = EXCLUDED.score, seed = EXCLUDED.seed, inputs = EXCLUDED.inputs
 			WHERE ghosts.score < EXCLUDED.score`,
-			"daily:"+day.Format("2006-01-02"), g.Score, g.Seed, string(raw)); err != nil {
+			ghostKind(day, g.Ver), g.Score, g.Seed, string(raw)); err != nil {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}

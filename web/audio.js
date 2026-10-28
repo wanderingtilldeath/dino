@@ -36,5 +36,7 @@ export const sfx = {
   milestone: () => { tone(880, 0.08); tone(1175, 0.12, "square", 0.04, 0, 0.09); },
   pickup: () => tone(600, 0.08, "triangle", 0.06, 1200),
   shield: () => tone(220, 0.18, "sawtooth", 0.06, 70),
+  hit: () => { tone(200, 0.25, "sawtooth", 0.06, 55); tone(90, 0.2, "square", 0.04, 40, 0.04); },
+  erupt: () => tone(70, 0.3, "sawtooth", 0.05, 120),
   boss: () => { tone(110, 0.3, "sawtooth", 0.06); tone(82, 0.5, "sawtooth", 0.06, 0, 0.25); },
 };

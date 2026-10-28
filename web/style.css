@@ -31,9 +31,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 syste
 .stage-card { overflow: hidden; }
 .stage { position: relative; }
 canvas { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
+canvas.pixel { image-rendering: pixelated; }
 .pill { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; text-align: center; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 6px 18px; box-shadow: var(--shadow); font-size: 13px; line-height: 1.35; white-space: nowrap; }
 .pill small { display: block; color: var(--muted); font-size: 11px; }
 .pill strong { font-weight: 600; }
+
+.endrun { position: absolute; right: 10px; bottom: 10px; font: 600 12px system-ui, sans-serif; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; box-shadow: var(--shadow); }
+.note { margin-top: -6px; min-height: 1.5em; }
 
 .result { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 20px; border-top: 1px solid var(--line); animation: rise .25s ease-out; }
 .r-score { display: flex; align-items: center; gap: 10px; font: 600 32px/1 var(--num); }

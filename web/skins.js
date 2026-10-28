@@ -1,5 +1,6 @@
 // Skins and themes are draw-only: hitboxes live in sim.js, so they never affect gameplay or replays.
-import { rr } from "./art.js";
+import { rr, isRetro } from "./art.js";
+import { drawDinoRetro } from "./sprites.js";
 
 export const SKINS = [
   { id: "classic", name: "Classic", at: 0 },
@@ -8,10 +9,10 @@ export const SKINS = [
   { id: "robot", name: "Robot", at: 3000 },
 ];
 
-export const THEMES = [
-  { id: "classic", name: "Classic", at: 0, day: [252, 251, 248], night: [30, 33, 46], fgDay: [58, 62, 74], fgNight: [226, 230, 240], accent: [95, 158, 127], stars: 0 },
-  { id: "desert", name: "Desert", at: 800, day: [249, 236, 212], night: [44, 30, 52], fgDay: [112, 78, 50], fgNight: [242, 206, 150], accent: [122, 150, 84], stars: 0 },
-  { id: "space", name: "Space", at: 2000, day: [34, 38, 86], night: [6, 6, 22], fgDay: [206, 222, 255], fgNight: [255, 255, 255], accent: [96, 204, 228], stars: 0.7 },
+// Biomes (colors, obstacles, weather) are automatic by score now; this only picks how the canvas is drawn.
+export const STYLES = [
+  { id: "modern", name: "Modern", at: 0 },
+  { id: "retro", name: "Retro pixel", at: 0 },
 ];
 
 export function load(key, def) {
@@ -24,6 +25,7 @@ export function save(key, val) {
 // b = hitbox {x,y,w,h} (28x30 standing, 28x16 ducking); the dino is painted inside it.
 // squash (0..1) is a cosmetic landing squish; the ghost passes 0.
 export function drawDino(ctx, skin, b, fg, bg, frame, air, squash = 0) {
+  if (isRetro()) return drawDinoRetro(ctx, skin, b, { fg, bg }, frame, air, squash);
   const duck = b.h < 20, X = b.x, Y = b.y;
   ctx.save();
   if (squash > 0) { // scale around the feet
